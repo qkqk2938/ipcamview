@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import './module/websocketStreaming.dart';
 import 'package:flutter_joystick/flutter_joystick.dart';
+// import 'package:gallery_saver/gallery_saver.dart';
 import 'dart:typed_data';
 import 'dart:convert';
 
@@ -14,7 +15,7 @@ class  MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return  MaterialApp(//실질적으로 감싸는 위젯.반드시 argument를 가져야함
-      title: 'first app',//앱을 총칭하는 이름 
+      title: 'dapang app',//앱을 총칭하는 이름 
       theme: ThemeData(
         primarySwatch: Colors.blue //특정색의 음영을 사용
       ),
@@ -53,6 +54,69 @@ class _MainWidgetState extends State<MainWidget> {
   double _y = 0;
   JoystickMode _joystickMode = JoystickMode.all;
   bool _value = false;
+  // final _ipTextEditController = TextEditingController(text: "ws://34.125.119.133");
+  final _ipTextEditController = TextEditingController(text: "ws://sonorous-earth-377802.du.r.appspot.com");
+  final _passwordTextEditController = TextEditingController(text: "mon_2938");
+
+  @override
+  void dispose(){
+    _ipTextEditController.dispose();
+    _passwordTextEditController.dispose();
+    super.dispose();
+  }
+
+  connectWS2(){
+    _webSocketStreaming.connect(_ipTextEditController.text, _passwordTextEditController.text);
+    _webSocketStreaming.startStreaming((data) {
+              // 데이터 처리
+      setState(() {
+        _imageData = data;
+      });
+    });
+    _webSocketStreaming.sendCommand("mecanum","off");
+  }
+
+
+void connectWS(){
+  showDialog(
+    context: context,
+    barrierDismissible: false, // user must tap button!
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('비밀번호 입력'),
+        content: SingleChildScrollView(
+          child: ListBody(
+            children: <Widget>[
+              Text('비밀번호를 입력하세요.!'),
+              TextFormField(
+                controller: _ipTextEditController,
+                decoration: const InputDecoration(
+                  labelText: 'IP',
+                ),
+              ),
+              TextFormField(
+                controller: _passwordTextEditController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('연결'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              connectWS2();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -61,7 +125,7 @@ class _MainWidgetState extends State<MainWidget> {
             mode: _joystickMode,
             initialJoystickAlignment: const Alignment(0, 0.8),
             listener: (details) {
-              _webSocketStreaming.send(details.x, details.y);
+              _webSocketStreaming.sendData(details.x, details.y);
             },          
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
@@ -72,31 +136,57 @@ class _MainWidgetState extends State<MainWidget> {
                   fit: BoxFit.fitWidth,
                   width: MediaQuery.of(context).size.width,
                 ):CircularProgressIndicator(),
-                ElevatedButton(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                  ElevatedButton(
                   onPressed: () {
-                    _webSocketStreaming.connect('ws://34.125.119.133', 'mon_2938');
-                    _webSocketStreaming.startStreaming((data) {
-                      // 데이터 처리
-                      setState(() {
-                        _imageData = data;
-                      });
-                    });
+                    
+                    connectWS();
                   },
                   child: Text('Connect'),
                 ),
+                SizedBox(width: 10.0,),
                 ElevatedButton(
                   onPressed: () {
                     _webSocketStreaming.close();
                   },
                   child: Text('Disconnect'),
                 ),
-                Switch(
-                  value: _value,
-                  onChanged:(value){
-                    setState((){
-                      _value = value;
-                    });
+                SizedBox(width: 10.0,),
+                ElevatedButton(
+                  onPressed: () {
+                    _webSocketStreaming.sendCommand("capture","on");
+
+                    //  if (_imageData != null) {
+                    //   String encodedImage = base64Encode(_imageData!);
+                    //   GallerySaver.saveImage(encodedImage);
+                    // } else {
+                    //   print("no image");
+                    // }
                   },
+                  child: Text('capture'),
+                )
+                ]
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('전방고정'),
+                    Switch(
+                      value: _value,
+                      onChanged:(value){
+                        setState((){
+                          if(value){
+                            _webSocketStreaming.sendCommand("mecanum","on");
+                          }else{
+                            _webSocketStreaming.sendCommand("mecanum","off");
+                          }
+                          _value = value;
+                        });
+                      },
+                    ),
+                  ]
                 ),
               ],
             ),
@@ -105,3 +195,5 @@ class _MainWidgetState extends State<MainWidget> {
 
   }
 }
+
+

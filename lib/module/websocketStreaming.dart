@@ -15,9 +15,14 @@ class WebSocketStreaming {
     });
   }
 
-  void send(double x, double y){
+  void sendData(double x, double y){
     final data = [x,y];
-    final message = json.encode({'data': data});
+    final message = json.encode({"command": "axis",'data': data});
+    _channel?.sink.add(message);
+  }
+
+  void sendCommand(String command, String data){
+    final message = json.encode({"command": command, 'data': data});
     _channel?.sink.add(message);
   }
 
