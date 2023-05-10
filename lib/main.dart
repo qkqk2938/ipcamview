@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import './module/websocketStreaming.dart';
 import 'package:flutter_joystick/flutter_joystick.dart';
-// import 'package:gallery_saver/gallery_saver.dart';
+import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'dart:convert';
+import 'dart:async';
 
 void main() {
   runApp(MyApp());
@@ -54,6 +55,7 @@ class _MainWidgetState extends State<MainWidget> {
   double _y = 0;
   JoystickMode _joystickMode = JoystickMode.all;
   bool _value = false;
+  bool _visibility = false;
   // final _ipTextEditController = TextEditingController(text: "ws://34.125.119.133");
   final _ipTextEditController = TextEditingController(text: "ws://sonorous-earth-377802.du.r.appspot.com");
   final _passwordTextEditController = TextEditingController(text: "mon_2938");
@@ -67,6 +69,9 @@ class _MainWidgetState extends State<MainWidget> {
 
   connectWS2(){
     _webSocketStreaming.connect(_ipTextEditController.text, _passwordTextEditController.text);
+    setState(() {
+      _visibility = true;
+    });
     _webSocketStreaming.startStreaming((data) {
               // 데이터 처리
       setState(() {
@@ -130,6 +135,11 @@ void connectWS(){
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
+                Visibility(
+                   child: StatusWidget(),
+                   visible: _visibility,
+                )
+                ,
                 _imageData != null? Image.memory(
                   _imageData!,
                   gaplessPlayback: true,
@@ -197,3 +207,110 @@ void connectWS(){
 }
 
 
+class StatusWidget extends StatefulWidget {
+  @override
+  _StatusWidgetState createState() => _StatusWidgetState();
+}
+
+class _StatusWidgetState extends State<StatusWidget> {
+  late Timer _timer;
+  // var url = Uri.parse('http://34.125.119.133/status');
+  // var killMonUrl = Uri.parse('http://34.125.119.133/killmon');
+  // var killCamUrl = Uri.parse('http://34.125.119.133/killcam');
+  // var killDriveUrl = Uri.parse('http://34.125.119.133/killdrive');
+  var url = Uri.parse('https://sonorous-earth-377802.du.r.appspot.com/status');
+  var killMonUrl = Uri.parse('https://sonorous-earth-377802.du.r.appspot.com/killmon');
+  var killCamUrl = Uri.parse('https://sonorous-earth-377802.du.r.appspot.com/killcam');
+  var killDriveUrl = Uri.parse('https://sonorous-earth-377802.du.r.appspot.com/killdrive');
+  var oldStatus = "";
+  var monState = Colors.red;
+  var ipcamState = Colors.red;
+  var trainState = Colors.red;
+
+  _StatusWidgetState(){
+    _startTimer();
+
+  }
+  void _startTimer() {
+    
+    _timer = Timer.periodic(Duration(seconds: 1),(timer) async {
+      var response = await http.get(url);
+      var body = json.decode(response.body);
+      if(oldStatus != response){
+        oldStatus = response.body;
+        setState(() {
+          if(body["mon"]=="off"){
+            monState = Colors.red;
+          }else{
+            monState = Colors.green;
+          }
+          if(body["ipcam"]=="off"){
+            ipcamState = Colors.red;
+          }else{
+            ipcamState = Colors.green;
+          }
+          if(body["drivetrain"]=="off"){
+            trainState = Colors.red;
+          }else{
+            trainState = Colors.green;
+          }
+
+        });
+
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return  ClipRRect(
+      borderRadius: BorderRadius.circular(8.0),
+      child: 
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            RawMaterialButton(
+              onPressed: () {
+                http.get(killMonUrl);
+              },
+              elevation: 1.0,
+              fillColor: monState,
+              child: Icon(
+                Icons.monitor,
+                size: 15.0,
+              ),
+              shape: CircleBorder(),
+            ),
+            RawMaterialButton(
+              onPressed: () {
+                http.get(killCamUrl);
+              },
+              elevation: 1.0,
+              fillColor: ipcamState,
+              child: Icon(
+                Icons.videocam,
+                size: 15.0,
+              ),
+              shape: CircleBorder(),
+            ),
+            RawMaterialButton(
+              onPressed: () {
+                http.get(killDriveUrl);
+              },
+              elevation: 1.0,
+              fillColor: trainState,
+              child: Icon(
+                Icons.drive_eta,
+                size: 15.0,
+              ),
+              shape: CircleBorder(),
+            ),
+          ]
+        ),
+    );
+  }
+
+}
+
+//monitor
+//drive eta
